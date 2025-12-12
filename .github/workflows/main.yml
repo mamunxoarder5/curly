@@ -1,0 +1,63 @@
+name: Avica
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-avica:
+    runs-on: windows-latest
+    env:
+      NGROK_AUTH: ${{ secrets.NGROK_AUTH }}
+      NGROK_REGION: us
+
+    steps:
+
+    - name: Download & Install Ngrok
+      shell: powershell
+      run: |
+        Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile "ngrok.zip"
+        Expand-Archive ngrok.zip -DestinationPath $env:ProgramFiles
+        & "$env:ProgramFiles\ngrok.exe" config add-authtoken $env:NGROK_AUTH
+        Write-Host "Ngrok Installed."
+
+    - name: Start Ngrok TCP Tunnel (Port 3389 for RDP or your custom port)
+      shell: powershell
+      run: |
+        $ngrokPath = "$env:ProgramFiles\ngrok.exe"
+        
+        # Start ngrok in background
+        Start-Process -FilePath $ngrokPath -ArgumentList "tcp", "3389", "--region", $env:NGROK_REGION, "--log=stdout" -WindowStyle Hidden
+
+        # Wait for ngrok API to come online
+        Start-Sleep -Seconds 5
+
+        # Extract tunnel URL from API
+        $tunnel = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels" | Select-Object -ExpandProperty tunnels
+        $publicUrl = $tunnel.public_url
+
+        Write-Host "NGROK_URL=$publicUrl"
+        echo "NGROK_URL=$publicUrl" >> $env:GITHUB_ENV
+
+    - name: Download and run setup.bat from GitLab
+      shell: powershell
+      run: |
+        Invoke-WebRequest -Uri "https://gitlab.com/MR.English2008/avica/-/raw/main/setup.bat" -OutFile "setup.bat"
+        cmd /c setup.bat
+
+    - name: Install Python libraries
+      shell: bash
+      run: |
+        pip install pillow requests
+
+    - name: Run show.bat
+      shell: cmd
+      run: |
+        call show.bat
+
+    - name: Keep runner alive (heartbeat)
+      shell: powershell
+      run: |
+        while ($true) {
+          Write-Host (Get-Date -Format "u") " - heartbeat"
+          Start-Sleep -Seconds 60
+        }
