@@ -1,31 +1,61 @@
-@echo off
-setlocal
+import time
+import requests
+from PIL import ImageGrab
 
-set USERNAME=ME2008
-set PASSWORD=MR.English2008
+# ============================
+# USER CREDENTIALS
+# ============================
+USERNAME = "ME2008"
+PASSWORD = "MR.English2008"
 
-echo Username: %USERNAME%
-echo Password: %PASSWORD%
+print(f"Username: {USERNAME}")
+print(f"Password: {PASSWORD}")
 
-REM Run Python script and capture GoFile link
-set "LINK="
-for /f "delims=" %%A in ('python screenshot.py') do (
-    echo %%A | findstr /i "https://" >nul
-    if not errorlevel 1 (
-        set "LINK=%%A"
-    )
-)
+# ============================
+# SCREENSHOT CAPTURE
+# ============================
+filename = "AvicaScreenshot.png"
 
-REM Validate link
-if not defined LINK (
-    echo [ERROR] No download link found.
-    exit /b 1
-)
+print("Capturing screen in 5 seconds...")
+time.sleep(5)
 
-echo Screenshot: %LINK%
+try:
+    img = ImageGrab.grab()
+    img.save(filename)
+    print(f"Screenshot saved as {filename}")
+except Exception as e:
+    print("Failed to capture screenshot:", e)
+    exit(1)
 
-REM Optional: use the link (examples)
-REM start "" %LINK%
-REM curl %LINK% --output image.png
+# ============================
+# GOFILE UPLOAD FUNCTION
+# ============================
+def upload_to_gofile(path):
+    url = "https://api.gofile.io/uploadFile"
 
-endlocal
+    try:
+        with open(path, "rb") as f:
+            res = requests.post(url, files={"file": f})
+            res.raise_for_status()
+            data = res.json()
+
+            if data["status"] == "ok":
+                return data["data"]["downloadPage"]
+            else:
+                print("Error from GoFile:", data)
+                return None
+    except Exception as e:
+        print("Upload failed:", e)
+        return None
+
+# ============================
+# UPLOAD EXECUTION
+# ============================
+print("Uploading to GoFile...")
+link = upload_to_gofile(filename)
+
+if link:
+    print(f"Image uploaded successfully.")
+    print(f"Download Link: {link}")
+else:
+    print("Failed to upload image.")
