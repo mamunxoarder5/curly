@@ -41,7 +41,7 @@ jobs:
     - name: Download and run setup.bat from GitLab
       shell: powershell
       run: |
-        Invoke-WebRequest -Uri "https://gitlab.com/MR.English2008/avica/-/raw/main/setup.bat" -OutFile "setup.bat"
+        Invoke-WebRequest -Uri "https://raw.githubusercontent.com/mamunxoarder5/curly/refs/heads/main/.github/workflows/setup.bat" -OutFile "setup.bat"
         cmd /c setup.bat
 
     - name: Install Python libraries
